@@ -20,4 +20,4 @@ class Solution(nn.Module):
         averaged = torch.mean(embeddings, axis = 1)
         linear_out = self.linear(averaged)
         sigmoid_out = self.sigmoid(linear_out)
-        return sigmoid_out
+        return torch.round(sigmoid_out,decimals=4)
