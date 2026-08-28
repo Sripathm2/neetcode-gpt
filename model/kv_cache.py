@@ -27,6 +27,7 @@ class CachedAttention(nn.Module):
         self.q_proj = nn.Linear(model_dim, model_dim, bias=False)
         self.k_proj = nn.Linear(model_dim, model_dim, bias=False)
         self.v_proj = nn.Linear(model_dim, model_dim, bias=False)
+        self.model_dim = model_dim
 
     def forward(self, x: torch.Tensor, kv_cache: Optional[KVCache] = None) -> Tuple[torch.Tensor, KVCache]:
         q = self.q_proj(x)
@@ -36,19 +37,15 @@ class CachedAttention(nn.Module):
         if kv_cache is None:
             kv_cache = KVCache()
 
-        # how many tokens were already cached before this call
         prev_len = 0 if kv_cache.cache_k is None else kv_cache.cache_k.shape[1]
 
         K, V = kv_cache.update(new_k, new_v)
 
         model_dim = q.shape[-1]
         scores = (q @ K.transpose(-2, -1)) / math.sqrt(model_dim)
-        # scores shape: (batch, new_len, total_len)
 
         new_len = q.shape[1]
         total_len = K.shape[1]
-
-
         row_idx = torch.arange(new_len).unsqueeze(1) + prev_len   # (new_len, 1)
         col_idx = torch.arange(total_len).unsqueeze(0)            # (1, total_len)
         mask = col_idx <= row_idx    # True where key position is allowed (causal)
